@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Dashboard - Placement Cell</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f4f6f9; }
+        .sidebar {
+            height: 100vh;
+            background-color: #1e293b;
+            color: white;
+        }
+        .sidebar a {
+            color: white;
+            text-decoration: none;
+            display: block;
+            padding: 10px;
+        }
+        .sidebar a:hover {
+            background-color: #334155;
+        }
+        .card { margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+
+<div class="container-fluid" id="app">
+    <div class="row">
+        
+        <div class="col-md-2 sidebar p-3">
+            <h4>{{user_name || "Admin Panel"}}</h4>
+            <hr>
+            <a href="/admin/dashboard">Dashboard</a>
+            <a href="/admin/managecompany">Manage Companies</a>
+            <a href="/admin/placement-drives">Placement Drives</a>
+            <a href="/admin/managestudents">Students</a>
+            <a href="#">Blacklist</a>
+            <a href="#">Search</a>
+        </div>
+
+        <div class="col-md-10 p-4">
+            <h2>Institute Placement Dashboard</h2>
+            <hr>
+
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="card text-bg-primary">
+                        <div class="card-body">
+                            <h5>Total Students</h5>
+                            {{student_count || "None" }}
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card text-bg-success">
+                        <div class="card-body">
+                            <h5>Total Companies</h5>
+                            {{company_count || "None"}}
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card text-bg-warning">
+                        <div class="card-body">
+                            <h5>Active Drives</h5>
+                            <h3>{{ going_drives.length }}</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <h4>On Going Drives</h4>
+            <table class="table table-bordered table-striped">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Drives</th>
+                      
+                    </tr>
+                </thead>
+                <tbody>
+                    
+                    <tr>
+                        
+                        <td v-for="d in going_drives" :key="d.id"><a :href = "'/drive-page/' + d.id">{{d.Title}}</a></td>
+                        
+                        
+                    </tr>
+
+                </tbody>
+            </table>
+
+            <div>
+                <h4>Upcoming drives</h4>
+                <span>
+                    <ul>
+                        
+                        <li v-for="d in upcoming_drives" :key="d.id"><a href="'/drive-page/'+d.id">{{d.Title}}</a></li>
+                        
+                    </ul>
+                </span>
+            </div>
+
+            <h4>Search</h4>
+            <form class="row g-3" @submit.prevent="searchStudents">
+                <div class="col-md-4">
+                    <input type="text" class="form-control" v-model="searchQuery" placeholder="Search by Name or ID">
+                </div>
+                <div class="col-md-2">
+                    <button class="btn btn-primary" type="submit">Search</button>
+                </div>
+            </form>
+
+            <ul v-if="searchResults.length">
+                <li v-for="s in searchResults" :key="s.id">{{ s.name }} ({{ s.id }})</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+
+<script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.js"></script>
+<script>
+    const {createApp} = Vue 
+    createApp({
+        data(){
+            return {
+                user_name:"",
+                student_count:null,
+                company_count:null,
+                going_drives:[],
+                upcoming_drives:[],
+                searchQuery: '',
+                searchResults:[],
+            }
+        },
+        created(){
+            this.fetchDashData();
+        },
+        methods:{
+            async fetchDashData(){
+                try{
+                    const res = await fetch(`http://127.0.0.1:5000/admin/dashboard`);
+                    if(!res.ok) throw new Error('Failed to fetch dashboard data');
+                    const data = await res.json();
+                    this.user_name = data.user_name;
+                    this.student_count = data.student_count;
+                    this.company_count = data.company_count;
+                    this.going_drives =data.going_drives;
+                    this.upcoming_drives = data.upcoming_drives;
+                    
+
+                }catch(err){
+                    console.log(err);
+                }
+            },
+            async searchStudents(){
+                try{
+                    const res = await fetch("api/?q=${encodeURIComponent(this.searchQuery)}");
+                    const data = await res.json();
+                    this.searchResults = data.results || [];
+                }catch(err){
+                    console.log(err);
+                }
+                
+            }
+        }
+    }).mount("#app");
+</script>
+</body>
+</html>
