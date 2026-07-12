@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Company Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f8fafc; }
+        .sidebar {
+            height: 100vh;
+            background-color: #0f172a;
+            color: white;
+        }
+        .sidebar a {
+            color: white;
+            text-decoration: none;
+            display: block;
+            padding: 10px;
+        }
+        .sidebar a:hover {
+            background-color: #1e293b;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container-fluid" id="app">
+    <div class="row">
+
+        <div class="col-md-2 sidebar p-3">
+            <h4 >{{user_name || "Company Panel"}}</h4>
+            <hr>
+            <a href="/company/dashboard">Dashboard</a>
+            <a href="/company/create-drive">Create Drive</a>
+            <a href="/company/applications">Applications</a>
+            <a href="/company/profile">Profile</a>
+        </div>
+
+        <div class="col-md-10 p-4">
+            <h2>Company Dashboard</h2>
+            <hr>
+             <p>{{message}}</p>
+           
+            <h2>On Going Drive</h2>
+            <div class="companydrive">
+                <span  v-for=" d in drives">
+                    
+                    <p><a href="'/drive-page/'+d.id">{{d.Name}}</a></p>
+                    
+                </span>
+            </div>
+            
+
+        <h4>Student Applications</h4>
+        
+        <table class="table table-bordered">
+            <thead class="table-dark">
+                <tr>
+                    <th>Name</th>
+                    <th>Branch</th>
+                    <th>CGPA</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                
+                <tr v-for="st in student_applications">
+                    <td>{{ st.name }}</td>
+                    <td>{{ st.branch }}</td>
+                    <td>{{ st.cgpa }}</td>
+                    <td>{{ st.status }}</td>
+                </tr>
+                
+            </tbody>
+        </table>
+        
+
+                </div>
+    </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.js"></script>
+<script>
+    const {createApp} = Vue;
+    createApp({
+        data(){
+            return {
+                student_applications:[],
+                drives:[],
+                user_name:"",
+                message:"",
+            }
+        },
+        create(){
+            this.fetchCompanyData();
+        },
+        methods:{
+            async fetchCompanyData(){
+                try{
+
+                
+                    const res = await fetch(`http://127.0.0.1:5000/company/dashboard`,{
+                        credentials:'include'
+                    });
+                    if(!res.ok) throw new Exception("something went wrong ");
+                    const data = await res.json();
+                    if(!data.success) throw new Exception(data.message);
+                    this.student_applications = data.student_applications;
+                    this.drives = data.drives;
+                    this.user_name = data.user_name;
+                    return;
+                }catch(err){
+                    this.message =err;
+                    console.log(err);
+                }
+            }
+        }
+    }).mount("#app");
+</script>
+</body>
+</html>
