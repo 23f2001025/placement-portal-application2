@@ -31,10 +31,10 @@
         <div class="col-md-2 sidebar p-3">
             <h4>{{user_name || "Student"}}</h4>
             <hr>
-            <a href="/student/dashboard">Dashboard</a>
-            <a href="/student/apply">Placement Drives</a>
-            <a href="/student/view-applications">Applications</a>
-            <a href="/student/profile">Profile</a>
+            <a href="student-dash.html">Dashboard</a>
+            <a href="student-drive.html">Placement Drives</a>
+            <a href="student-application.html">Applications</a>
+            <a href="student-profile.html" class="active">Profile</a>
         </div>
 
         <div class="col-md-10 p-4">
@@ -45,13 +45,13 @@
            
             
             <h4>Announcements</h4>
-            <div class="mb-4" v-for="a in announcements">
+            <div class="mb-4" >
                 
                 <div class="card mb-2 border-start border-primary border-3">
-                    <div class="card-body py-2">
-                        <div class="d-flex justify-content-between align-items-center">
+                    <div class="card-body py-2" v-for="a in announcements">
+                        <div class="d-flex justify-content-between align-items-center" >
                             <h6 class="mb-1">{{ a.Title }}</h6>
-                            <small class="text-muted">{{ a.date.strftime('%d %b %Y') }}</small>
+                            <small class="text-muted"> {{ formatDate(a.date) }} </small>
                         </div>
                         
                         <p class="mb-0 text-muted" style="font-size:0.9rem;" v-if="a.text.length">{{ a.text }}</p>
@@ -65,10 +65,10 @@
             
            
             <h4>Available Placement Drives</h4>
-            <div class="card mb-3" v-for="d in drives">
+            <div class="card mb-3" v-for="d in drives" :key="d.drive_id">
               
                 <div class="card-body">
-                    <h5><a href="'/drive-page/+d.id'">{{ d.job_title }}</a></h5>
+                    <h5><a :href="'drive.html?id=' + d.drive_id">{{ d.job_title }}</a></h5>
                     <p>{{ d.package }}</p>
                 </div>
                
@@ -108,10 +108,10 @@
         data(){
             return {
                 user_name:"",
-                messsage:"",
-                announcements:"",
+                message:"",
+                announcements:[],
                 drives:[],
-                applications:"",
+                applications:[],
             }
         },
         created(){
@@ -125,16 +125,20 @@
                     });
                     if(!res.ok) throw new Exception("Error loadinf dashboard");
                     const data = await res.json();
-                    if(!data.success) throw new Exception(data.message);
+                    if(!data.success) throw new Error(data.message);
                     this.user_name = data.user_name;
                     this.applications = data.applications;
-                    this.drive = data.drives;
+                    this.drives = data.drives;
                     this.announcements = data.announcements;
                     return;
                 }catch(err){
                     this.message = err;
                     console.log(err);
                 }
+            },
+            formatDate(dateStr){
+                const d = new Date(dateStr);
+                return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
             }
         }
     }).mount("#app");

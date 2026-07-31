@@ -31,10 +31,10 @@
         <div class="col-md-2 sidebar p-3">
             <h4>{{user_name || "Admin Panel"}}</h4>
             <hr>
-            <a href="/admin/dashboard">Dashboard</a>
-            <a href="/admin/managecompany">Manage Companies</a>
-            <a href="/admin/placement-drives">Placement Drives</a>
-            <a href="/admin/managestudents">Students</a>
+            <a href="admindash.html">Dashboard</a>
+            <a href="admin-company.html">Manage Companies</a>
+            <a href="admin-placementdrive.html">Placement Drives</a>
+            <a href="admin-student.html">Students</a>
             <a href="#">Blacklist</a>
             <a href="#">Search</a>
         </div>
@@ -82,7 +82,7 @@
                     
                     <tr>
                         
-                        <td v-for="d in going_drives" :key="d.id"><a :href = "'/drive-page/' + d.id">{{d.Title}}</a></td>
+                        <td v-for="d in going_drives" :key="d.id"><a :href="'drive.html?id=' + d.id">{{d.Title}}</a></td>
                         
                         
                     </tr>
@@ -95,7 +95,7 @@
                 <span>
                     <ul>
                         
-                        <li v-for="d in upcoming_drives" :key="d.id"><a href="'/drive-page/'+d.id">{{d.Title}}</a></li>
+                        <li v-for="d in upcoming_drives" :key="d.id"><a :href="'drive.html?id=' + d.id">{{d.Title}}</a></li>
                         
                     </ul>
                 </span>
@@ -140,13 +140,16 @@
         methods:{
             async fetchDashData(){
                 try{
-                    const res = await fetch(`http://127.0.0.1:5000/admin/dashboard`);
+                    const res = await fetch(`http://127.0.0.1:5000/admin/dashboard`, {
+            credentials: 'include'
+        });
+                    console.log(res);
                     if(!res.ok) throw new Error('Failed to fetch dashboard data');
                     const data = await res.json();
                     this.user_name = data.user_name;
                     this.student_count = data.student_count;
                     this.company_count = data.company_count;
-                    this.going_drives =data.going_drives;
+                    this.going_drives =data.ongoing_drives;
                     this.upcoming_drives = data.upcoming_drives;
                     
 
@@ -156,7 +159,7 @@
             },
             async searchStudents(){
                 try{
-                    const res = await fetch("api/?q=${encodeURIComponent(this.searchQuery)}");
+                    const res = await fetch(`api/?q=${encodeURIComponent(this.searchQuery)}`);
                     const data = await res.json();
                     this.searchResults = data.results || [];
                 }catch(err){

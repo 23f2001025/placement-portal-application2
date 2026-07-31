@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>My Applications</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f1f5f9; }
+        .sidebar {
+            height: 100vh;
+            background-color: #1e40af;
+            color: white;
+        }
+        .sidebar a {
+            color: white;
+            text-decoration: none;
+            display: block;
+            padding: 10px;
+        }
+        .sidebar a:hover, .sidebar a.active {
+            background-color: #1d4ed8;
+        }
+        .error   { color: red;   font-weight: bold; }
+        .success { color: green; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="container-fluid" id="app">
+    <div class="row">
+
+       
+        <div class="col-md-2 sidebar p-3">
+            <h4>{{student_name || "Student"}}</h4>
+            <hr>
+            <a href="student-dash.html">Dashboard</a>
+            <a href="student-drive.html">Placement Drives</a>
+            <a href="student-application.html">Applications</a>
+            <a href="student-profile.html" class="active">Profile</a>
+        </div>
+
+       
+        <div class="col-md-10 p-4">
+            <h2>My Applications</h2>
+
+            
+                <p v-if="message.length">{{ message }}</p>
+                        
+
+            
+            <table class="table table-bordered mt-3">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Drive</th>
+                        <th>Package (LPA)</th>
+                        <th>Status</th>
+                        <th>Resume</th>
+                    </tr>
+                </thead>
+                <tbody v-for="app in applications">
+                    
+                    <tr>
+                        <td>
+                            <a href="'/drive-page/'+app.drive_id">
+                                {{ app.drive_title }}
+                            </a>
+                        </td>
+                        <td>
+                            {{app.package +" LPA " || "NA"}}
+                        </td>
+                        <td>
+                            
+                                <span class="badge bg-success" v-if="app.status=='shortlisted'">Shortlisted</span>
+                            
+                                <span class="badge bg-primary" v-else-if="app.status=='Applied'">Applied</span>
+                            
+                                <span class="badge bg-secondary" v-else>{{ app.status }}</span>
+                            
+                        </td>
+                        <td>
+                            
+                                <a href="/static/resumes/{{ app.resume }}" target="_blank" v-if="app.resume">View Resume</a>
+                          
+                                <span class="text-muted" v-else>Not uploaded</span>
+                            
+                        </td>
+                    </tr>
+                    
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.js"></script>
+<script>
+const {createApp} = Vue;
+    createApp({
+        data(){
+            return {
+                student_name:"",
+                applications:[],
+                message:"",
+
+            }
+        },
+        created(){
+            this.fetchData();
+        },
+        methods:{
+            async fetchData(){
+                try{
+                    
+                    
+                    
+                    const res = await fetch(`http://127.0.0.1:5000/student/view-applications`,{
+                        credentials:'include'
+                        
+                    });
+                   
+                    if(!res.ok) throw new Error("something went  wrong");
+                    const data = await res.json();
+                    if(!data.success) throw new Error(" Error  "+data.message);
+                    this.applications = data.applications
+                    this.student_name=data.student_name
+
+                }catch(err){
+                    this.message = err;
+                    console.log(err);
+
+                }
+            }
+        }
+    }).mount("#app");
+</script>
+</body>
+</html>

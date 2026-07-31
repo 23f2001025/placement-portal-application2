@@ -42,10 +42,10 @@
         <div class="col-md-2 sidebar p-3">
             <h4>{{user_name || "Admin Panel"}}</h4>
             <hr>
-            <a href="/admin/dashboard">Dashboard</a>
-            <a href="/admin/managecompany">Manage Companies</a>
-            <a href="/admin/placement-drives">Placement Drives</a>
-            <a href="/admin/managestudents">Students</a>
+            <a href="admindash.html">Dashboard</a>
+            <a href="admin-company.html">Manage Companies</a>
+            <a href="admin-placementdrive.html">Placement Drives</a>
+            <a href="admin-student.html">Students</a>
             <a href="#">Blacklist</a>
             <a href="#">Search</a>
         </div>
@@ -94,7 +94,7 @@
 
                         <tbody>
                           
-                            <tr v-for="company in pending_comps">
+                            <tr v-for="company in pending_comps" :key="company.id">
                                 <td>{{ company.name }}</td>
                                 <td>{{ company.hr }}</td>
                                 <td>{{ company.email }}</td>
@@ -108,8 +108,6 @@
                                     </form>
 
                                     <form @submit.prevent="blacklistCompany(company.id)">
-                                        <input type="hidden" v-model="company_id" value="{{ company.id }}">
-                                        <input type="hidden" name="action" value="blacklist">
                                         
                                         <button type="submit" class="btn btn-success btn-sm">
                                             BlackList
@@ -181,6 +179,7 @@
                     const data = await  res.json();
                     this.user_name= data.user_name;
                     this.pending_comps = data.pending_companies;
+                    console.log(this.pending_comps)
                     this.approved_comps = data.approved_companies;
                     return;
                 }catch(err){
@@ -213,6 +212,7 @@
                 
             },
             async ApproveCompany(company_id){
+                console.log(company_id)
                 try{
                     const res = await fetch(`http://127.0.0.1:5000/admin/managecompany/approveCompany`,{
                         method:'POST',
@@ -235,7 +235,7 @@
             },
             async blacklistCompany(company_id){
                 try{
-                    const res = await fetch(`http://127.0.0.1:5000/admin/managecompany/blacklistCompany`,{
+                    const res = await fetch(`http://127.0.0.1:5000/admin/managecompany/blacklist`,{
                         method:'POST',
                         headers:{
                             'Content-Type':'application/json'

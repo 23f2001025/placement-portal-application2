@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Campus Drive Details</title>
+    <style>
+        body{
+            font-family: Arial, sans-serif;
+            background:#f4f6f9;
+            margin:0;
+            padding:0;
+        }
+
+        .container{
+            width:70%;
+            margin:40px auto;
+            background:white;
+            padding:30px;
+            border-radius:8px;
+            box-shadow:0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        h1{
+            margin-bottom:20px;
+        }
+
+        .section{
+            margin-bottom:20px;
+        }
+
+        .label{
+            font-weight:bold;
+            color:#444;
+        }
+
+        .value{
+            margin-top:4px;
+            color:#333;
+        }
+
+        .grid{
+            display:grid;
+            grid-template-columns:1fr 1fr;
+            gap:20px;
+        }
+
+        .status{
+            padding:6px 12px;
+            border-radius:5px;
+            display:inline-block;
+            background:#e6f0ff;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container" id="app">
+
+    <h1>{{ drive.job_title }}</h1>
+
+    <div class="grid">
+
+        <div class="section">
+            <div class="label">Location</div>
+            <div class="value">{{ drive.location }}</div>
+        </div>
+
+        <div class="section">
+            <div class="label">Package (LPA)</div>
+            <div class="value">{{ drive.package_lpa }}</div>
+        </div>
+
+        <div class="section">
+            <div class="label">Cutoff CGPA</div>
+            <div class="value">{{ drive.cutoff_cgpa }}</div>
+        </div>
+
+        <div class="section">
+            <div class="label">Allowed Branches</div>
+            <div class="value">{{ drive.allowed_branches }}</div>
+        </div>
+
+        <div class="section">
+            <div class="label">Deadline</div>
+            <div class="value">{{ drive.deadline }}</div>
+        </div>
+
+        <div class="section">
+            <div class="label">Drive Date</div>
+            <div class="value">{{ drive.drive_date }}</div>
+        </div>
+
+        <div class="section">
+            <div class="label">Status</div>
+            <div class="value status">{{ drive.status }}</div>
+        </div>
+
+    </div>
+
+    <div class="section">
+        <div class="label">Job Description</div>
+        <div class="value">{{ drive.job_description }}</div>
+    </div>
+
+    <div class="section">
+        <div class="label">Rounds Description</div>
+        <div class="value">{{ drive.rounds_description }}</div>
+    </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.js"></script>
+<script>
+    const {createApp} = Vue
+    createApp({
+        data(){
+            return {
+                drive:{},
+            }
+        },
+        created(){
+            this.fetchDriveDetails();
+        },
+        methods:{
+            async fetchDriveDetails(){
+                try{
+                    const params = new URLSearchParams(window.location.search);
+                    const id = params.get("id");
+                    const res = await fetch(`http://127.0.0.1:5000/company/drive?id=${id}`);
+                    if(!res.ok) throw new Error("Failed to fetch drive details");
+                    const data = await res.json();
+                    this.drive = data.drive;
+                }catch(err){
+                    console.log(err);
+                }
+            }
+        }
+    }).mount("#app");
+</script>
+
+</body>
+</html>

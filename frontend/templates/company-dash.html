@@ -30,10 +30,10 @@
         <div class="col-md-2 sidebar p-3">
             <h4 >{{user_name || "Company Panel"}}</h4>
             <hr>
-            <a href="/company/dashboard">Dashboard</a>
-            <a href="/company/create-drive">Create Drive</a>
-            <a href="/company/applications">Applications</a>
-            <a href="/company/profile">Profile</a>
+            <a href="company-dash.html">Dashboard</a>
+            <a href="create-drive.html">Create Drive</a>
+            <a href="company-studentapplications.html">Applications</a>
+            <a href="company-profile.html">Profile</a>
         </div>
 
         <div class="col-md-10 p-4">
@@ -43,9 +43,9 @@
            
             <h2>On Going Drive</h2>
             <div class="companydrive">
-                <span  v-for=" d in drives">
+                <span  v-for= "d in drives" :key="d.drive_id">
                     
-                    <p><a href="'/drive-page/'+d.id">{{d.Name}}</a></p>
+                    <p><a :href="'drive.html?id=' + d.drive_id">{{d.Name}}</a></p>
                     
                 </span>
             </div>
@@ -90,19 +90,21 @@
                 message:"",
             }
         },
-        create(){
+        created(){
             this.fetchCompanyData();
         },
         methods:{
             async fetchCompanyData(){
                 try{
 
-                
+                    console.log("hello")
                     const res = await fetch(`http://127.0.0.1:5000/company/dashboard`,{
                         credentials:'include'
                     });
+                    console.log(res)
                     if(!res.ok) throw new Exception("something went wrong ");
                     const data = await res.json();
+                    console.log(data)
                     if(!data.success) throw new Exception(data.message);
                     this.student_applications = data.student_applications;
                     this.drives = data.drives;
