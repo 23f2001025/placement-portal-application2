@@ -70,11 +70,24 @@
             <br>
             
                
-                <p v-if="searchResult"> Company Name - {{search_results.name}}</p>
-                <p v-if="searchResult">Number of drives - {{search_results.drives}}</p>
-                <p v-else>No data found</p>
-                <br>
-          
+                <table v-if="searchResult" class="table table-bordered table-striped mt-3">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Company Name</th>
+                                <th>Number of Drives</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                          
+                            <tr v-for=" sr in search_results">
+                                <td>{{sr.name}}</td>
+                                <td>{{ sr.drives }}</td>
+                            </tr>
+                            
+                        </tbody>
+                    </table>
+            <br>
             
             
             <div class="section-card">
@@ -159,7 +172,7 @@
             return {
                 user_name:"",
                 search_id:"",
-                search_results:{},
+                search_results:[],
                 searchResult:false,
                 pending_comps:[],
                 approved_comps:[],
@@ -203,7 +216,7 @@
                     const data = await  res.json();
                     if(!data.success) throw new Error('Failed to fetch companies');
                     this.searchResult = true;
-                    this.search_results = data.search_results;
+                    this.search_results = data.search_result;
 
                     return;
                 }catch(err){

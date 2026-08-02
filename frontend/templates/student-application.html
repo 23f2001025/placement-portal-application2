@@ -79,7 +79,9 @@
                         </td>
                         <td>
                             
-                                <a href="/static/resumes/{{ app.resume }}" target="_blank" v-if="app.resume">View Resume</a>
+                                <a v-if="app.resume" :href="`http://127.0.0.1:5000/student/resume/${app.drive_id}`" target="_blank">
+                                    View Resume
+                                </a>
                           
                                 <span class="text-muted" v-else>Not uploaded</span>
                             

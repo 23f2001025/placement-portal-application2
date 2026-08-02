@@ -32,8 +32,8 @@
             <hr>
             <a href="company-dash.html">Dashboard</a>
             <a href="create-drive.html">Create Drive</a>
-            <a href="edit-drives.html">Edit Drives</a>
             <a href="company-studentapplications.html">Applications</a>
+            <a href="edit-drive.html">Drives</a>
             <a href="company-profile.html">Profile</a>
         </div>
 
@@ -52,15 +52,15 @@
                 </thead>
                 <tbody>
                     <tr v-for="d in drives" :key="d.drive_id">
-                        <td>{{ d.Name }}</td>
+                        <td>{{ d.Title }}</td>
                         <td>
                             <span class="badge" :class="d.applications_closed ? 'bg-secondary' : 'bg-success'">
                                 {{ d.status }}
                             </span>
                         </td>
                         <td class="text-center">
-                            <button class="btn btn-primary btn-sm me-2" >
-                                <a :href="'add-drivedetails.html?id=' + d.id">Edit</a>
+                            <button class="btn btn-primary btn-sm me-2" @click="editDrive(d.drive_id)">
+                                Edit
                             </button>
                             <button
                                 class="btn btn-warning btn-sm me-2"
@@ -114,7 +114,7 @@
                 }
             },
             editDrive(driveId){
-                window.location.href = `edit-drive.html?id=${driveId}`;
+                window.location.href = `add-drivedetails.html?id=${driveId}`;
             },
             async closeApplications(driveId){
                 if(!confirm("Close applications for this drive?")) return;
@@ -136,7 +136,7 @@
             async deleteDrive(driveId){
                 if(!confirm("Are you sure you want to delete this drive? This cannot be undone.")) return;
                 try{
-                    const res = await fetch(`http://127.0.0.1:5000/company/drives/${driveId}`,{
+                    const res = await fetch(`http://127.0.0.1:5000/company/edit-drives/${driveId}`,{
                         method:'DELETE',
                         credentials:'include'
                     });

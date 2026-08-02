@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Edit Placement Drive</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f8fafc; }
+        .sidebar {
+            height: 100vh;
+            background-color: #0f172a;
+            color: white;
+        }
+        .sidebar a {
+            color: white;
+            text-decoration: none;
+            display: block;
+            padding: 10px;
+        }
+        .sidebar a:hover {
+            background-color: #1e293b;
+        }
+        .error{
+            color: red;
+            font-weight: bold;
+        }
+        .success{
+            color: green;
+            font-weight: bold;
+        }
+        .field-row {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 14px 18px;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .field-row.dirty {
+            border-color: #f0ad4e;
+            background: #fffaf0;
+        }
+        .field-label {
+            font-size: 0.8rem;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            margin-bottom: 2px;
+        }
+        .field-value {
+            font-size: 1rem;
+            color: #0f172a;
+            word-break: break-word;
+        }
+        .dirty-badge {
+            font-size: 0.7rem;
+            color: #b45309;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container-fluid" id="app">
+    <div class="row">
+
+        <div class="col-md-2 sidebar p-3">
+            <h4>{{user_name || "Company Panel"}}</h4>
+            <hr>
+            <a href="company-dash.html">Dashboard</a>
+            <a href="create-drive.html">Create Drive</a>
+            <a href="company-studentapplication.html">Applications</a>
+            <a href="edit-drives.html">Drives</a>
+            <a href="company-profile.html">Profile</a>
+        </div>
+
+        <div class="col-md-10 p-4">
+            <h2>Edit Placement Drive</h2>
+            <hr>
+            <p class="error" v-if="message.length">{{ message }}</p>
+            <p class="success" v-if="successMessage.length">{{ successMessage }}</p>
+
+            <div v-if="loading">Loading drive details...</div>
+
+            <template v-else>
+
+                <div class="field-row" :class="{ dirty: editedFields.has(f.key) }" v-for="f in fields" :key="f.key">
+                    <div>
+                        <div class="field-label">
+                            {{ f.label }}
+                            <span class="dirty-badge" v-if="editedFields.has(f.key)">● edited</span>
+                        </div>
+                        <div class="field-value">{{ drive[f.key] }}</div>
+                    </div>
+                    <button class="btn btn-outline-primary btn-sm" @click="openEdit(f)">
+                        Edit
+                    </button>
+                </div>
+
+                <div class="d-grid gap-2 d-md-flex mt-4">
+                    <button
+                        class="btn btn-primary"
+                        :disabled="saving || editedFields.size === 0"
+                        @click="updateDrive"
+                    >
+                        {{ saving ? "Saving..." : `Save Changes (${editedFields.size})` }}
+                    </button>
+                    <a href="edit-drives.html" class="btn btn-secondary">Back</a>
+                </div>
+
+            </template>
+
+        </div>
+    </div>
+
+    <!-- Edit field modal -->
+    <div class="modal fade" id="editFieldModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit {{ editingField ? editingField.label : "" }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <textarea
+                        v-if="editingField && editingField.multiline"
+                        class="form-control"
+                        rows="4"
+                        v-model="editingValue"
+                    ></textarea>
+                    <input
+                        v-else
+                        type="text"
+                        class="form-control"
+                        v-model="editingValue"
+                    >
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" @click="saveFieldEdit">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.js"></script>
+<script>
+    const {createApp} = Vue
+    createApp({
+        data(){
+            return {
+                drive_id: null,
+                user_name:"",
+                message:"",
+                successMessage:"",
+                loading:true,
+                saving:false,
+
+                
+                drive: {
+                    job_title:"",
+                    package_lpa:"",
+                    cutoff_cgpa:"",
+                    location:"",
+                    allowed_branches:"",
+                    deadline:"",
+                    drive_date:"",
+                    job_description:"",
+                    rounds_description:"",
+                },
+
+                // field definitions used to render rows + the modal
+                fields: [
+                    { key:"job_title", label:"Title" },
+                    { key:"package_lpa", label:"Package" },
+                    { key:"cutoff_cgpa", label:"CGPA Required" },
+                    { key:"location", label:"Location" },
+                    { key:"allowed_branches", label:"Allowed Branches" },
+                    { key:"deadline", label:"Deadline" },
+                    { key:"drive_date", label:"Start Date" },
+                    { key:"job_description", label:"Description", multiline:true },
+                    { key:"rounds_description", label:"Rounds", multiline:true },
+                ],
+
+                
+                editedFields: new Set(),
+
+                
+                editingField: null,
+                editingValue: "",
+                modalInstance: null,
+            }
+        },
+        created(){
+            const params = new URLSearchParams(window.location.search);
+            this.drive_id = params.get("id");
+            if(!this.drive_id){
+                this.message = "No drive id provided";
+                this.loading = false;
+                return;
+            }
+            this.fetchDriveDetails();
+        },
+        mounted(){
+            this.modalInstance = new bootstrap.Modal(document.getElementById("editFieldModal"));
+        },
+        methods:{
+            async fetchDriveDetails(){
+                try{
+                    const res = await fetch(`http://127.0.0.1:5000/company/drive?id=${this.drive_id}`,{
+                        credentials:"include",
+                    });
+                    if(!res.ok) throw new Error("Failed to fetch drive details");
+                    const data = await res.json();
+                    if(!data.success) throw new Error(data.message || "Failed to fetch drive details");
+
+                    this.user_name = data.user_name;
+
+                    const d = data.drive;
+                    this.drive.job_title = d.job_title;
+                    this.drive.package_lpa = d.package_lpa;
+                    this.drive.cutoff_cgpa = d.cutoff_cgpa;
+                    this.drive.location = d.location;
+                    this.drive.allowed_branches = d.allowed_branches;
+                    this.drive.deadline = d.deadline;
+                    this.drive.drive_date = d.drive_date;
+                    this.drive.job_description = d.job_description;
+                    this.drive.rounds_description = d.rounds_description;
+                }catch(err){
+                    this.message = err.message;
+                    console.log(err);
+                }finally{
+                    this.loading = false;
+                }
+            },
+
+            openEdit(field){
+                this.editingField = field;
+                this.editingValue = this.drive[field.key];
+                this.modalInstance.show();
+            },
+
+            saveFieldEdit(){
+                if(!this.editingField) return;
+                this.drive[this.editingField.key] = this.editingValue;
+                this.editedFields.add(this.editingField.key);
+                this.modalInstance.hide();
+                this.editingField = null;
+                this.editingValue = "";
+            },
+
+            async updateDrive(){
+                if(this.editedFields.size === 0) return;
+
+                this.saving = true;
+                this.message = "";
+                this.successMessage = "";
+
+                
+                const payload = {};
+                this.editedFields.forEach(key => {
+                    payload[key] = this.drive[key];
+                });
+
+                try{
+                    const res = await fetch(`http://127.0.0.1:5000/company/edit-drives/${this.drive_id}`,{
+                        method:"PUT",
+                        credentials:"include",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(payload),
+                    });
+                    const data = await res.json();
+                    if(!res.ok || !data.success) throw new Error(data.message || "Failed to update drive");
+
+                    this.successMessage = "Drive updated successfully";
+                    this.editedFields.clear();
+                }catch(err){
+                    this.message = err.message;
+                    console.log(err);
+                }finally{
+                    this.saving = false;
+                }
+            }
+        }
+    }).mount("#app");
+</script>
+
+</body>
+</html>
