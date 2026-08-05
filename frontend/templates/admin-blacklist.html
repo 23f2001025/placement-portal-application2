@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Blacklist - Placement Cell</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f4f6f9; }
+        .sidebar {
+            height: 100vh;
+            background-color: #1e293b;
+            color: white;
+        }
+        .sidebar a {
+            color: white;
+            text-decoration: none;
+            display: block;
+            padding: 10px;
+        }
+        .sidebar a:hover {
+            background-color: #334155;
+        }
+        .sidebar a.active {
+            background-color: #334155;
+            font-weight: 600;
+        }
+        .card { margin-bottom: 20px; }
+        .error{
+            color: red;
+            font-weight: bold;
+        }
+        .success{
+            color: green;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container-fluid" id="app">
+    <div class="row">
+
+        <div class="col-md-2 sidebar p-3">
+            <h4>{{user_name || "Admin Panel"}}</h4>
+            <hr>
+            <a href="admindash.html">Dashboard</a>
+            <a href="admin-company.html">Manage Companies</a>
+            <a href="admin-placementdrive.html">Placement Drives</a>
+            <a href="admin-student.html">Students</a>
+            <a href="admin-blacklist.html" class="active">Blacklist</a>
+           
+        </div>
+
+        <div class="col-md-10 p-4">
+            <h2>Blacklisted Companies & Students</h2>
+            <hr>
+
+            <p class="error" v-if="message.length">{{ message }}</p>
+            <p class="success" v-if="successMessage.length">{{ successMessage }}</p>
+
+            <div v-if="loading">Loading blacklist...</div>
+
+            <template v-else>
+
+                <h4>Blacklisted Companies</h4>
+                <table class="table table-bordered table-striped">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Company Name</th>
+                            <th>Email</th>
+                            <th>Registered On</th>
+                            <th class="text-center">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="c in blacklistedCompanies" :key="c.company_id">
+                            <td>{{ c.name }}</td>
+                            <td>{{ c.email || "-" }}</td>
+                            <td>{{ c.registered_on || "-" }}</td>
+                            <td class="text-center">
+                                <button
+                                    class="btn btn-success btn-sm"
+                                    :disabled="removingId === c.id"
+                                    @click="removeFromBlacklist('company', c.id)"
+                                >
+                                    {{ removingId === c.company_id ? "Removing..." : "Remove from Blacklist" }}
+                                </button>
+                            </td>
+                        </tr>
+                        <tr v-if="blacklistedCompanies.length === 0">
+                            <td colspan="4" class="text-center text-muted">No blacklisted companies</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h4 class="mt-5">Blacklisted Students</h4>
+                <table class="table table-bordered table-striped">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Name</th>
+                            <th>Enrollment No.</th>
+                            <th>Branch</th>
+                            <th>Semester</th>
+                            <th class="text-center">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="s in blacklistedStudents" :key="s.enrollment">
+                            <td>{{ s.name }}</td>
+                            <td>{{ s.enroll_no }}</td>
+                            <td>{{ s.branch }}</td>
+                            <td>{{ s.sem || "-" }}</td>
+                            <td class="text-center">
+                                <button
+                                    class="btn btn-success btn-sm"
+                                    :disabled="removingId === s.enrollment"
+                                    @click="removeFromBlacklist('student', s.enrollment)"
+                                >
+                                    {{ removingId === s.student_id ? "Removing..." : "Remove from Blacklist" }}
+                                </button>
+                            </td>
+                        </tr>
+                        <tr v-if="blacklistedStudents.length === 0">
+                            <td colspan="5" class="text-center text-muted">No blacklisted students</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+            </template>
+
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.js"></script>
+<script>
+    const {createApp} = Vue
+    createApp({
+        data(){
+            return {
+                user_name:"",
+                blacklistedCompanies:[],
+                blacklistedStudents:[],
+                loading:true,
+                message:"",
+                successMessage:"",
+                removingId:null,
+            }
+        },
+        created(){
+            this.fetchBlacklist();
+        },
+        methods:{
+            async fetchBlacklist(){
+                try{
+                    const res = await fetch(`http://127.0.0.1:5000/admin/blacklist`, {
+                        credentials:'include'
+                    });
+                    if(!res.ok) throw new Error("Failed to fetch blacklist");
+                    const data = await res.json();
+                    if(!data.success) throw new Error(data.message || "Failed to fetch blacklist");
+
+                    this.user_name = data.user_name;
+                    this.blacklistedCompanies = data.companies || [];
+                    this.blacklistedStudents = data.students || [];
+                }catch(err){
+                    this.message = err.message;
+                    console.log(err);
+                }finally{
+                    this.loading = false;
+                }
+            },
+
+            async removeFromBlacklist(type, id){
+                if(!confirm("Remove this " + type + " from the blacklist?")) return;
+
+                this.removingId = id;
+                this.message = "";
+                this.successMessage = "";
+
+                try{
+                    const res = await fetch(`http://127.0.0.1:5000/admin/blacklist/${type}/${id}`, {
+                        method:"DELETE",
+                        credentials:"include",
+                    });
+                    const data = await res.json();
+                    if(!res.ok || !data.success) throw new Error(data.message || "Failed to remove from blacklist");
+
+                    if(type === "company"){
+                        this.blacklistedCompanies = this.blacklistedCompanies.filter(c => c.company_id !== id);
+                    }else{
+                        this.blacklistedStudents = this.blacklistedStudents.filter(s => s.student_id !== id);
+                    }
+
+                    this.successMessage = "Removed from blacklist successfully";
+                    this.fetchBlacklist();
+                }catch(err){
+                    this.message = err.message;
+                    console.log(err);
+                }finally{
+                    this.removingId = null;
+                }
+            }
+        }
+    }).mount("#app");
+</script>
+</body>
+</html>

@@ -36,7 +36,7 @@
             <hr>
             <a href="company-dash.html">Dashboard</a>
             <a href="create-drive.html">Create Drive</a>
-            <a href="company-studentapplications.html">Applications</a>
+            <a href="company-studentapplication.html">Applications</a>
             <a href="edit-drive.html">Drives</a>
             <a href="company-profile.html">Profile</a>
         </div>
@@ -70,7 +70,9 @@
                         <td>{{ app.drive_title }}</td>
                         <td>{{ app.status }}</td>
                         <td>
-                            <a :href="'/static/resumes/' + app.resume" target="_blank" v-if="app.resume">View Resume</a>
+                            <a v-if="app.resume" :href="`http://127.0.0.1:5000/company/student-resume/${app.student_id}/${app.drive_id}`" target="_blank">
+                                    View Resume
+                                </a>
                             <span class="text-muted" v-else>Not uploaded</span>
                         </td>
                         <td>
@@ -163,6 +165,7 @@
                     const formData = new FormData();
                     formData.append("application_id", application_id);
                     formData.append("action", action);
+                    console.log(application_id,action);
                     const res = await fetch(`http://127.0.0.1:5000/company/applications`,{
                         method:"POST",
                         credentials:"include",

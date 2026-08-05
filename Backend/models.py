@@ -70,7 +70,11 @@ class CampusDrive(db.Model):
     drive_date      = db.Column(db.DateTime, nullable=True)
     created_on      = db.Column(db.DateTime, default=datetime.now)   
     status          = db.Column(db.String(20), default='Pending')
+    approved        = db.Column(db.Boolean, default=False)
+
     applications    = db.relationship('Application', backref='drive', lazy=True)
+    interviews  = db.relationship('Interviews', backref='drive', lazy=True)
+
 
 
     def __repr__(self):
@@ -104,6 +108,7 @@ class Application(db.Model):
     resume          = db.Column(db.String(100),nullable=True)
     __table_args__  = (db.UniqueConstraint('student_id', 'drive_id',
                                            name='unique_application'),)
+    interview  = db.relationship('Interviews', backref='application', lazy=True)
 
     def __repr__(self):
         return f'<Application student={self.student_id} drive={self.drive_id} [{self.status}]>'
@@ -142,3 +147,16 @@ class EligibleBranch(db.Model):
     id = db.Column(db.Integer , primary_key=True)
     branch = db.Column(db.String(250),nullable=False)
     drive_id = db.Column(db.Integer , db.ForeignKey('campus_drive.id'),nullable=False)
+
+class Interviews(db.Model):
+    __tablename__ = 'Interviews'
+    id = db.Column(db.Integer , primary_key=True)
+    drive_id = db.Column(db.Integer , db.ForeignKey('campus_drive.id'),nullable=False)
+    application_id = db.Column(db.Integer , db.ForeignKey('application.id'),nullable=False)
+    start_time = db.Column(db.Time, nullable=False)
+    end_time = db.Column(db.Time, nullable=False)
+    interview_date = db.Column(db.Date, nullable=False)
+    status = db.Column(db.String(20), default="Scheduled")
+    feedback = db.Column(db.Text,nullable=True)
+    panel_no = db.Column(db.Integer,default=0)
+

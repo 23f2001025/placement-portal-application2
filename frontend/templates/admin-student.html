@@ -45,8 +45,8 @@
             <a href="admin-company.html">Manage Companies</a>
             <a href="admin-placementdrive.html">Placement Drives</a>
             <a href="admin-student.html">Students</a>
-            <a href="#">Blacklist</a>
-            <a href="#">Search</a>
+            <a href="admin-blacklist.html">Blacklist</a>
+            
         </div>
 
         <div class="col-md-10 p-4">
@@ -181,11 +181,11 @@
                             <td>{{ st.cgpa }}</td>
                             <td>{{ st.email }}</td>
                             <td>
-                                <form @submit.prevent="handleStudentAction(st.id, 'blacklist')" style="display:inline;">
+                                <form @submit.prevent="handleStudentAction(st.Enroll, 'blacklist')" style="display:inline;">
                                     <button type="submit" class="btn btn-warning btn-sm">Blacklist</button>
                                 </form>
 
-                                <form @submit.prevent="handleStudentAction(st.id, 'remove')" style="display:inline;">
+                                <form @submit.prevent="handleStudentAction(st.Enroll, 'remove')" style="display:inline;">
                                     <button type="submit" class="btn btn-danger btn-sm">Remove</button>
                                 </form>
                             </td>
@@ -255,8 +255,8 @@
                     const data = await res.json();
                     this.user_name = data.user_name;
                     this.announcements = data.announcements;
-                    this.student_reg = data.student_reg;
-                    this.student_placed = data.student_placed;
+                    this.student_reg = data.registered_students;
+                    this.student_placed = data.placed_students;
                 }catch(err){
                     console.log(err);
                 }
@@ -284,13 +284,12 @@
             },
             async deleteAnnouncement(announce_id){
                 try{
-                    const formData = new FormData();
-                    formData.append("announce_id", announce_id);
-                    formData.append("action", "delete-announce");
-                    const res = await fetch(`http://127.0.0.1:5000/admin/managestudents/delete-announcement`,{
-                        method:"POST",
+                    
+                    
+                    const res = await fetch(`http://127.0.0.1:5000/admin/managestudents/delete-announcement/${announce_id}`,{
+                        method:"DELETE",
                         credentials:"include",
-                        body: formData,
+                    
                     });
                     if(!res.ok) throw new Error("Failed to delete announcement");
                     this.fetchStudentsData();
@@ -320,7 +319,7 @@
             async handleStudentAction(student_id, action){
                 try{
                     const formData = new FormData();
-                    const ac_url = `http://127.0.0.1:5000/admin/managestudents/search-student`
+                    let ac_url = `http://127.0.0.1:5000/admin/managestudents/search-student`
                     if(action == "blacklist"){
                         ac_url = `http://127.0.0.1:5000/admin/managestudents/blacklist`
                     }else{
@@ -328,6 +327,7 @@
                     }
                     formData.append("student_id", student_id);
                     formData.append("action", action);
+                    console.log(ac_url)
                     const res = await fetch(ac_url,{
                         method:"POST",
                         credentials:"include",

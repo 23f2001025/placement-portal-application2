@@ -10,14 +10,14 @@ admin_bp = Blueprint('admin', __name__)
 @admin_bp.route('/login',methods=["POST"])
 def admin_login():
     if session.get('role') == 'admin':
-        print("yha se")
+        
         return jsonify({
             "success": True,
             "message": "Already logged in"
         }), 200
    
     try:
-        print("aaya")
+        
         data = request.get_json() 
         username = data["username"]
         if not "password" in data:
@@ -55,11 +55,11 @@ def dashboard():
         stds = Student.query.count()
         drives = CampusDrive.query.filter(
             CampusDrive.deadline > datetime.now(),
-            CampusDrive.status == 'Approved'
+            CampusDrive.approved == True
         ).all()
 
         pending_drives  = CampusDrive.query.filter(
-            CampusDrive.status == 'Pending'
+            CampusDrive.approved == False 
         ).all()
 
         on_going_drives = []
@@ -129,6 +129,9 @@ def blacklist_company():
         data = request.get_json()
         comp_id = data["company_id"]
         comps = Company.query.filter_by(id = comp_id).first()
+        if not comps:
+            return jsonify({"success":False,"message":"No such company"})
+        print(comps)
         comps.is_blacklisted = True 
         db.session.commit()
         return jsonify({
@@ -183,6 +186,7 @@ def manage_companies():
         for d in approved_comp:
             off =  officers.query.filter_by(company_id = d.id,is_recruiter=True).first()
             approved_comps.append({
+                "id":d.id,
                 "name":d.name,
                 "website":d.website,
                 "hr":off.name if off else "N/A",
@@ -213,9 +217,10 @@ def manage_companies():
 @login_required('admin')
 def blacklist_student():
     try:
-        data = request.get_json()
+        data = request.form
         student_id = data["student_id"]
-        std = Student.query.filter_by(id=student_id).first()
+        print(student_id)
+        std = Student.query.filter_by(enroll_no=student_id).first()
         std.is_blacklisted = True 
         db.session.commit()
         return jsonify({
@@ -232,9 +237,9 @@ def blacklist_student():
 @login_required('admin')
 def remove_student():
     try:
-        data = request.get_json()
+        data = request.form
         student_id = data["student_id"]
-        std = Student.query.filter_by(id=student_id).first()
+        std = Student.query.filter_by(enroll_no=student_id).first()
         if not std:
             return jsonify({
                 "success":False,
@@ -277,13 +282,11 @@ def make_announce():
             "message":f"Something went wrong {e}"
         }),500
 
-@admin_bp.route('/managestudents/delete-announcement',methods=["DELETE"])
+@admin_bp.route('/managestudents/delete-announcement/<int:an_id>',methods=["DELETE"])
 @login_required('admin')
-def delete_announce():
+def delete_announce(an_id):
     try:
-        data = request.get_json()
-        announce_id = data["announce_id"]
-        an = Announcements.query.filter_by(id = announce_id).first()
+        an = Announcements.query.filter_by(id = an_id).first()
         db.session.delete(an)
         db.session.commit()
         return jsonify({
@@ -395,10 +398,10 @@ def manage_students():
 @login_required('admin')  
 def approve_drive():
     try:
-        print("hello")
+        
         data = request.form 
         dr_id = int(data["drive_id"])
-        print(dr_id)
+      
         drv = CampusDrive.query.filter_by(id = dr_id).first()
         if not drv:
             return jsonify({
@@ -406,7 +409,8 @@ def approve_drive():
                 "message":"Drive not found"
             }),404
         
-        drv.status = "Approved"
+        drv.approved = True 
+        drv.status = 'Applications Open'
         db.session.commit()
         return jsonify({
             "success":True,
@@ -452,8 +456,8 @@ def reject_drive():
 @login_required('admin')  
 def manage_placements():
     try:
-        pending_drvs = CampusDrive.query.filter_by(status='Pending').all()
-        ongoing_drvs = CampusDrive.query.filter(CampusDrive.status=='Approved', CampusDrive.deadline > datetime.now())
+        pending_drvs = CampusDrive.query.filter_by(approved=False).all()
+        ongoing_drvs = CampusDrive.query.filter(CampusDrive.approved==True, CampusDrive.deadline > datetime.now())
         user_name = 'admin'
         on_going = []
         for d in ongoing_drvs:
@@ -492,7 +496,59 @@ def manage_placements():
             "success":False,
             "message":f"Something Went wrong {e}"
         }),500
-        
+
+
+@admin_bp.route('/blacklist',methods=["GET"])
+@login_required('admin')  
+def blacklists():
+    try:
+        std = Student.query.filter_by(is_blacklisted=True).all()
+        comps = Company.query.filter_by(is_blacklisted=True).all()
+        all_comps = []
+        all_stds = []
+        for c in comps:
+            off =  officers.query.filter_by(company_id = c.id,is_recruiter=True).first()
+            all_comps.append({
+                "name":c.name,
+                "id":c.id,
+                "registered_on":c.registered_on,
+                "email":off.email
+            })
+        for s in std:
+            all_stds.append({
+                "name":s.name,
+                "sem":s.sem,
+                "enrollment":s.enroll_no,
+                "branch":s.branch
+            })
+        return jsonify({"success":True,"companies":all_comps,"students":all_stds,"user_name":"admin"}),200
+    except Exception as e:
+        return jsonify({"success":False,"message":f"something went wrong {e}"}),500
+
+@admin_bp.route('/blacklist/<string:user_type>/<string:uid>',methods=["DELETE"])
+@login_required('admin')  
+def removeblacklist(user_type,uid):
+    try:
+        print(user_type,uid)
+       
+        if user_type == "student":
+            st = Student.query.filter_by(enroll_no=uid).first()
+            if not st:
+                return jsonify({"success":False,"message":"No such Student"})
+            st.is_blacklisted=False 
+            db.session.commit()
+            return jsonify({"success":True,"message":"student removed from blacklist"})
+        if user_type == "company":
+            cid = int(uid)
+            co = Company.query.filter_by(id=cid).first()
+            if not co:
+                return jsonify({"success":False,"message":"No such Company"})
+            co.is_blacklisted=False 
+            db.session.commit()
+            return jsonify({"success":True,"message":"company removed from blacklist"})
+        return jsonify({"success":False,"message":"something went wrong"})
+    except Exception as e:
+        return jsonify({"success":False,"message":f"{e}"})
 
 
 

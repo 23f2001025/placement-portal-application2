@@ -43,11 +43,11 @@
             <h4>{{user_name || "Admin Panel"}}</h4>
             <hr>
             <a href="admindash.html">Dashboard</a>
-            <a href="admin-company.html">Manage Companies</a>
+            <a href="admin-company.html" class="active">Manage Companies</a>
             <a href="admin-placementdrive.html">Placement Drives</a>
             <a href="admin-student.html">Students</a>
-            <a href="#">Blacklist</a>
-            <a href="#">Search</a>
+            <a href="admin-blacklist.html" >Blacklist</a>
+            
         </div>
 
        
@@ -135,29 +135,37 @@
 
            
             <div class="section-card">
-                <h4>Registered Companies</h4>
-                <table class="table table-bordered table-hover mt-3">
-                    <thead class="table-primary">
-                        <tr>
-                                <th>Company Name</th>
-                                <th>Recruiter</th>
-                                <th>Email</th>
-                                <th>Contact</th>
-                            </tr>
-                        </thead>
+    <h4>Registered Companies</h4>
+    <table class="table table-bordered table-hover mt-3">
+        <thead class="table-primary">
+            <tr>
+                    <th>Company Name</th>
+                    <th>Recruiter</th>
+                    <th>Email</th>
+                    <th>Contact</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
 
-                        <tbody>
-                           
-                            <tr v-for="company in approved_comps">
-                                <td>{{ company.name }}</td>
-                                <td>{{ company.hr }}</td>
-                                <td>{{ company.email }}</td>
-                                <td>{{ company.website }}</td>
-                            </tr>
-                             
-                    </tbody>
-                </table>
-            </div>
+            <tbody>
+               
+                <tr v-for="company in approved_comps" :key="company.id">
+                    <td>{{ company.name }}</td>
+                    <td>{{ company.hr }}</td>
+                    <td>{{ company.email }}</td>
+                    <td>{{ company.website }}</td>
+                    <td>
+                        <form @submit.prevent="blacklistCompany(company.id)">
+                            <button type="submit" class="btn btn-danger btn-sm">
+                                Blacklist
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                 
+        </tbody>
+    </table>
+</div>
 
         </div>
 
