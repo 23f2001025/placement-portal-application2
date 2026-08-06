@@ -352,7 +352,7 @@ def manage_students():
                 "id":a.id  
             })
         sts = Student.query.filter_by(is_blacklisted = False).all()
-        apps   = Application.query.filter_by(status="shortlisted").all()
+        apps   = Application.query.filter_by(status="selected").all()
         reg_students = []
         for st in sts:
             reg_students.append({
@@ -365,6 +365,7 @@ def manage_students():
             })
         placed_stds = []
         for aps in apps:
+           
             drv = CampusDrive.query.filter_by(id=aps.drive_id).first()
             
             st = Student.query.filter_by(id=aps.student_id).first()
@@ -462,7 +463,7 @@ def manage_placements():
         on_going = []
         for d in ongoing_drvs:
             apps = len(d.applications)
-            apps_pas = Application.query.filter(Application.drive_id == d.id,Application.status == "Shortlisted").count()
+            apps_pas = Application.query.filter(Application.drive_id == d.id,Application.status == "selected").count()
             comp = Company.query.filter_by(id=d.company_id).first()
             on_going.append({
                 "Title":d.job_title,
@@ -518,7 +519,7 @@ def blacklists():
             all_stds.append({
                 "name":s.name,
                 "sem":s.sem,
-                "enrollment":s.enroll_no,
+                "enroll_no":s.enroll_no,
                 "branch":s.branch
             })
         return jsonify({"success":True,"companies":all_comps,"students":all_stds,"user_name":"admin"}),200

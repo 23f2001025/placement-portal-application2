@@ -154,8 +154,19 @@ def application():
         return jsonify({"success":False,"message":"Unauthorizedd Access"}),200
     apps = Application.query.filter_by(student_id=st.id).all()
     applis = []
+    inters = []
     for a in apps:
         d = CampusDrive.query.filter_by(id=a.drive_id).first()
+        interviews = Interviews.query.filter_by(application_id=a.id)
+        if interviews:
+            for i in interviews:
+                inters.append({
+                    "drive_title":d.job_title,
+                    "status":a.status,
+                    "date":i.interview_date.strftime("%Y-%m-%d"),
+                    "start":i.start_time.strftime("%H:%M"),
+                })
+
         applis.append({
             "resume":a.resume,
             "drive_id":a.drive_id,
@@ -163,8 +174,11 @@ def application():
             "status":a.status,
             "package":d.package_lpa
         })
+    print(inters)
+    
+    
     user_name=st.name
-    return jsonify({"success":True,"applications":applis,"user_name":user_name}),200
+    return jsonify({"success":True,"applications":applis,"user_name":user_name,"interviews":inters}),200
 
 @student_bp.route('/apply',methods=["POST","GET"])
 @login_required('student')
@@ -195,11 +209,13 @@ def apply():
             return jsonify({"success":False,"message":"Drive is not available"})
 
         elg = [eb.branch for eb in drive.eligible_branches]
+        elg2 = [b.strip().upper() for b in drive.allowed_branches.split(",") if b.strip()]
+        print(elg)
         
        
         if st.is_blacklisted == True:
             return jsonify({"success":False,"message":"You are BlackListed From the Institue"}),200
-        if elg and (st.branch.upper()  not in elg) and ("ALL" not in elg):
+        if elg and (st.branch.upper()  not in elg) and ("ALL" not in elg) and (st.branch.upper() not in elg2):
             return jsonify({"success":False,"message":"Your Branch is not eligible for this drive"}),200
         if st.cgpa < drive.cutoff_cgpa:
             return jsonify({"success":False,"message":"Your are not eligible for this drive because of cgpa constraints by company"}),200

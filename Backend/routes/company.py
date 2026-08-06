@@ -5,6 +5,7 @@ from flask import jsonify
 from utils import login_required
 from flask import send_from_directory, current_app, abort
 from datetime import datetime, timedelta
+from task import send_interview_email
 
 
 company_bp = Blueprint('company', __name__)
@@ -225,15 +226,24 @@ def student_applications():
         if action == "shortlist":
             app.status = "shortlisted"
         elif action == "remove":
+        
             db.session.delete(app)
+        elif action == "select":
+            app.status = "selected"
+        elif action == "reject":
+            app.status = "rejected"
         db.session.commit()
         return jsonify({"success":True,"message":"application updated"}),200
     drvs = CampusDrive.query.filter_by(company_id = usrid).all()
     applis = []
     shorted = []
+    interviews = []
+    accept = []
     for d in drvs:
         apps_pending = Application.query.filter_by(drive_id=d.id,status="Applied").all()
         apps_shortlisted = Application.query.filter_by(drive_id=d.id,status="shortlisted").all()
+        apps_interview = Application.query.filter_by(drive_id=d.id,status="interview_scheduled").all()
+        apps_selected = Application.query.filter_by(drive_id=d.id,status="selected").all()
 
 
         for a in apps_pending:
@@ -262,8 +272,31 @@ def student_applications():
                 "student_id":st.id,
                 "drive_id":d.id, 
             })
+        for a in apps_selected:
+            st = Student.query.filter_by(id=a.student_id).first()
+            accept.append({
+                "id":a.id,
+                "student_name":st.name,
+                
+                "drive_title":d.job_title,
+                "status":a.status,
+            })
+        for a in apps_interview:
+            st =  Student.query.filter_by(id=a.student_id).first()
+            inter = Interviews.query.filter(Interviews.application_id == a.id , Interviews.drive_id == d.id).first()
+            interviews.append({
+                "id":a.id,
+                "student_name":st.name,
+                "drive_title":d.job_title,
+                "date":inter.interview_date.strftime("%Y-%m-%d"),
+                "start":inter.start_time.strftime("%H:%M"),
+                "panel_no":inter.panel_no
+            })
+   
+   
+    print(type(applis),type(shorted),type(accept),type(interviews))
     user_name = comp.name
-    return jsonify({"success":True,"applications":applis,"shortlisted":shorted,"user_name":user_name}),200
+    return jsonify({"success":True,"applications":applis,"shortlisted":shorted,"user_name":user_name,"selected":accept,"interview":interviews}),200
 
 @company_bp.route('/view-drives',methods=["GET"])
 @login_required('company')
@@ -298,12 +331,23 @@ def editDrives(drive_id):
             if not dr:
                 return jsonify({"success":False,"Message":"No such drive exist."})
             columns = [column.name for column in CampusDrive.__table__.columns]
+            print(data)
             for c in columns:
                 if c == "company_id":
                     continue 
                 if c == "id":
                     continue 
                 if c == "status":
+                    continue 
+                if c in data and c == "allowed_branches":
+                    print("yes")
+                    bs = [b.strip().upper() for b in data[c].split(",") if b.strip()]
+                    for branch in bs:
+                        if EligibleBranch.query.filter_by(drive_id=drive_id,branch=branch):
+                            print("already")
+                            continue 
+                        elg = EligibleBranch(drive_id=drive_id.id,branch=branch)
+                        db.session.add(elg)
                     continue 
                 if c in data:
                     setattr(dr, c, data[c])
@@ -371,21 +415,21 @@ def student_resume(student_id,drive_id):
         return jsonify({"success":False,"message":f"{e}"}),500
     
 
-
+@company_bp.route('/schedule-interviews',methods=["POST"])
+@login_required('company')
 def schedule_interview():
     try:
         data = request.form
 
-        date_str = data["date"]
+        date_str = data["interview_date"]
         drive_id = int(data["drive_id"])
-
+        drive = CampusDrive.query.filter_by(id=drive_id).first()
         start_str = data["start_time"]
         end_str = data["end_time"]
 
         average = int(data["average_time"])
         panels = int(data["number_of_panels"])
 
-        
         interview_date = datetime.strptime(
             date_str, "%Y-%m-%d"
         ).date()
@@ -400,80 +444,290 @@ def schedule_interview():
             "%Y-%m-%d %H:%M"
         )
 
-       
-        one_inter = average + 10 + 10 + 10
+        if end_dt <= start_dt:
+            return jsonify({
+                "success": False,
+                "message": "end_time must be after start_time"
+            }), 400
 
        
+        one_inter = average + 5 + 5 + 10
+
+        
         break_st = start_dt + timedelta(hours=4)
         break_en = start_dt + timedelta(hours=5)
 
        
+        already_scheduled_app_ids = {
+            i.application_id for i in Interviews.query.filter_by(drive_id=drive_id).all()
+        }
+
         applis = Application.query.filter(
             Application.drive_id == drive_id,
             Application.status == "shortlisted"
         ).all()
 
-        
+        applis = [a for a in applis if a.id not in already_scheduled_app_ids]
+
+       
         panel_times = [start_dt for _ in range(panels)]
 
         count = 0
+        unscheduled = []
+        send_mails = []
 
         for app in applis:
+            scheduled = False
 
             
-            panel_num = min(
-                range(panels),
-                key=lambda p: panel_times[p]
-            )
+            for panel_num in sorted(range(panels), key=lambda p: panel_times[p]):
+                st = panel_times[panel_num]
 
-            st = panel_times[panel_num]
+                
+                if break_st <= st < break_en:
+                    st = break_en
 
-           
-            if break_st <= st < break_en:
-                st = break_en
-
-            interview_end = st + timedelta(minutes=one_inter)
-
-            
-            if st < break_st and interview_end > break_st:
-                st = break_en
                 interview_end = st + timedelta(minutes=one_inter)
 
-            
-            if interview_end > end_dt:
-                continue
+                
+                if st < break_st and interview_end > break_st:
+                    st = break_en
+                    interview_end = st + timedelta(minutes=one_inter)
 
-            interview = Interviews(
-                drive_id=drive_id,
-                application_id=app.id,
-                start_time=st.time(),
-                end_time=interview_end.time(),
-                interview_date=interview_date,
-                panel_no=panel_num + 1,
-                status="Scheduled"
-            )
+               
+                if interview_end > end_dt:
+                    continue
 
-            db.session.add(interview)
+                interview = Interviews(
+                    drive_id=drive_id,
+                    application_id=app.id,
+                    start_time=st.time(),
+                    end_time=interview_end.time(),
+                    interview_date=interview_date,
+                    panel_no=panel_num + 1,
+                    status="Scheduled"
+                )
+                db.session.add(interview)
 
-            count += 1
+                
+                app.status = "interview_scheduled"
+                student = Student.query.filter_by(id=app.student_id).first()
+                send_mails.append((
+                    student.email, student.name, drive.job_title,
+                    interview_date.strftime("%Y-%m-%d"),
+                    st.time().strftime("%H:%M"),
+                    panel_num + 1
+                ))
 
-           
-            panel_times[panel_num] = interview_end
+                panel_times[panel_num] = interview_end
+                count += 1
+                scheduled = True
+                break  
+
+            if not scheduled:
+                unscheduled.append(app.id)
 
         db.session.commit()
+        for email_args in send_mails:
+            send_interview_email.delay(*email_args)
 
         return jsonify({
             "success": True,
-            "Interviews scheduled": count,
-            "remaining": len(applis) - count
+            "interviews_scheduled": count,
+            "remaining": len(unscheduled),
+            "unscheduled_application_ids": unscheduled
         })
 
     except Exception as e:
         db.session.rollback()
-
         return jsonify({
             "success": False,
             "message": str(e)
         }), 500
 
+def calculate_placement_stats(drives):
 
+    overall = {
+        "total_drives": len(drives),
+        "total_applications": 0,
+        "total_appeared": 0,        
+        "total_shortlisted": 0,     
+        "total_interview_scheduled": 0,
+        "total_selected": 0,
+        "total_rejected": 0,
+        "shortlisted_but_rejected": 0,  
+        "selection_percentage": 0.0,    
+        "shortlist_percentage": 0.0,    
+        "interview_to_selection_rate": 0.0, 
+    }
+
+    drive_breakdown = []
+
+    for drive in drives:
+        apps = drive.applications  
+
+        total_apps = len(apps)
+        selected = sum(1 for a in apps if a.status == "selected")
+        rejected = sum(1 for a in apps if a.status == "rejected")
+        interview_scheduled = sum(1 for a in apps if a.status == "interview_scheduled")
+        shortlisted = sum(1 for a in apps if a.status == "shortlisted")
+
+        
+        shortlisted_or_beyond = sum(
+            1 for a in apps
+            if a.status in ("shortlisted", "interview_scheduled", "selected", "rejected")
+        )
+
+        
+        shortlisted_then_rejected = sum(
+            1 for a in apps if a.status == "rejected"
+        )
+        
+        drive_total_appeared = total_apps  
+
+        drive_stats = {
+            "drive_id": drive.id,
+            "job_title": drive.job_title,
+            "package_lpa": drive.package_lpa,
+            "total_applications": total_apps,
+            "shortlisted": shortlisted,
+            "interview_scheduled": interview_scheduled,
+            "selected": selected,
+            "rejected": rejected,
+            "shortlisted_but_rejected": shortlisted_then_rejected,
+            "selection_percentage": round((selected / total_apps * 100), 2) if total_apps else 0.0,
+        }
+        drive_breakdown.append(drive_stats)
+
+       
+        overall["total_applications"] += total_apps
+        overall["total_appeared"] += drive_total_appeared
+        overall["total_shortlisted"] += shortlisted_or_beyond
+        overall["total_interview_scheduled"] += interview_scheduled
+        overall["total_selected"] += selected
+        overall["total_rejected"] += rejected
+        overall["shortlisted_but_rejected"] += shortlisted_then_rejected
+
+    if overall["total_applications"] > 0:
+        overall["selection_percentage"] = round(
+            overall["total_selected"] / overall["total_applications"] * 100, 2
+        )
+        overall["shortlist_percentage"] = round(
+            overall["total_shortlisted"] / overall["total_applications"] * 100, 2
+        )
+
+    interview_stage_total = (
+        overall["total_interview_scheduled"]
+        + overall["total_selected"]
+        + overall["shortlisted_but_rejected"]
+    )
+    if interview_stage_total > 0:
+        overall["interview_to_selection_rate"] = round(
+            overall["total_selected"] / interview_stage_total * 100, 2
+        )
+
+    return {
+        "overall": overall,
+        "drive_breakdown": drive_breakdown
+    }
+
+import csv
+import os
+import time
+from flask import current_app
+
+def build_report_file(company_name, stats):
+   
+    filename = f"placement_report_{company_name.replace(' ', '_')}_{int(time.time())}.csv"
+    filepath = os.path.join(current_app.config['REPORTS_FOLDER'], filename)
+
+    overall = stats["overall"]
+    drives = stats["drive_breakdown"]
+
+    with open(filepath, mode="w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+
+       
+        writer.writerow([f"Placement Report - {company_name}"])
+        writer.writerow([])
+        writer.writerow(["Overall Summary"])
+        writer.writerow(["Metric", "Value"])
+        writer.writerow(["Total Drives", overall["total_drives"]])
+        writer.writerow(["Total Applications", overall["total_applications"]])
+        writer.writerow(["Total Appeared", overall["total_appeared"]])
+        writer.writerow(["Total Shortlisted", overall["total_shortlisted"]])
+        writer.writerow(["Total Interview Scheduled", overall["total_interview_scheduled"]])
+        writer.writerow(["Total Selected", overall["total_selected"]])
+        writer.writerow(["Total Rejected", overall["total_rejected"]])
+        writer.writerow(["Shortlisted but Rejected", overall["shortlisted_but_rejected"]])
+        writer.writerow(["Selection Percentage (%)", overall["selection_percentage"]])
+        writer.writerow(["Shortlist Percentage (%)", overall["shortlist_percentage"]])
+        writer.writerow(["Interview-to-Selection Rate (%)", overall["interview_to_selection_rate"]])
+
+        writer.writerow([])
+        writer.writerow([])
+
+        
+        writer.writerow(["Drive-wise Breakdown"])
+        writer.writerow([
+            "Drive ID",
+            "Job Title",
+            "Package (LPA)",
+            "Total Applications",
+            "Shortlisted",
+            "Interview Scheduled",
+            "Selected",
+            "Rejected",
+            "Shortlisted but Rejected",
+            "Selection Percentage (%)"
+        ])
+
+        for d in drives:
+            writer.writerow([
+                d["drive_id"],
+                d["job_title"],
+                d["package_lpa"],
+                d["total_applications"],
+                d["shortlisted"],
+                d["interview_scheduled"],
+                d["selected"],
+                d["rejected"],
+                d["shortlisted_but_rejected"],
+                d["selection_percentage"],
+            ])
+
+    return filename
+
+@company_bp.route('/export-report', methods=["POST"])
+@login_required('company')
+def export_report():
+    try:
+        company_id = session["user_id"]
+        comp = Company.query.filter_by(id=company_id).first()
+        if not comp:
+            return jsonify({"success": False, "message": "Unauthorized"}), 401
+
+        drives = CampusDrive.query.filter_by(company_id=company_id).all()
+
+        stats = calculate_placement_stats(drives)
+        filename = build_report_file(comp.name, stats)
+
+        return jsonify({
+            "success": True,
+            "message": "Report generated successfully",
+            "report_url": f"/company/download-report/{filename}"
+        }), 200
+
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
+
+@company_bp.route('/download-report/<filename>', methods=["GET"])
+@login_required('company')
+def download_report(filename):
+    import os
+    print(os.listdir(current_app.config['REPORTS_FOLDER']))
+    return send_from_directory(
+        current_app.config['REPORTS_FOLDER'],
+        filename,
+        as_attachment=True
+    )
