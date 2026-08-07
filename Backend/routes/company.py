@@ -2,10 +2,10 @@ from flask import Flask , Blueprint, render_template, request, redirect, flash ,
 from flask_sqlalchemy import SQLAlchemy
 from models import *
 from flask import jsonify
-from utils import login_required
 from flask import send_from_directory, current_app, abort
 from datetime import datetime, timedelta
 from task import send_interview_email
+from auth import create_token , login_required
 
 
 company_bp = Blueprint('company', __name__)
@@ -62,9 +62,9 @@ def company_login():
             
             return jsonify({"success":False,"message":"Institute did not accepted yet"}) , 200
         if company.check_password(passw):
-            session['role'] = 'company'
-            session['user_id'] = company.id
-            return jsonify({"success":True,"message":"login successfull"}),200
+            token = create_token(company.id, "company")
+            nam = company.name 
+            return jsonify({"success":True,"message":"login successfull","token":token,"user_name":nam}),200
         
         return jsonify({"success":False,"message":"invalid credentials"}),200
     except Exception as e:
@@ -76,7 +76,7 @@ def company_login():
 @login_required('company')
 def dashboard():
     try:
-        usr_id = session["user_id"]
+        usr_id = request.user_id
         cmp = Company.query.filter_by(id=usr_id).first()
         if not cmp:
             return jsonify({"success":False,"message":"company not found"}),404
@@ -117,7 +117,7 @@ def drive_page():
 @company_bp.route('/create-drive',methods=["GET","POST"])
 @login_required('company')
 def create_placement():
-    usr_id = session["user_id"]
+    usr_id = request.user_id
     comp = Company.query.filter_by(id = usr_id).first()
     if not comp:
         return jsonify({"success":False,"message":"Invalida credentials"}),200
@@ -189,7 +189,7 @@ def create_placement():
 @company_bp.route('/profile',methods=["GET","POST"])
 @login_required('company')
 def profile():
-    usr_id = session['user_id']
+    usr_id = request.user_id
     comp = Company.query.filter_by(id=usr_id).first()
     if not comp:
         return jsonify({"success":False,"message":"Unauthorized Access"}),200
@@ -214,7 +214,7 @@ def profile():
 @company_bp.route('/applications',methods=["GET","POST"])
 @login_required('company')
 def student_applications():
-    usrid = session["user_id"]
+    usrid = request.user_id
     comp = Company.query.filter_by(id = usrid).first()
     if not comp:
         return jsonify({"success":False,"message":"Unauthorized Access"}),401 
@@ -302,7 +302,7 @@ def student_applications():
 @login_required('company')
 def viewDrives():
     try:
-        usrid = session["user_id"]
+        usrid = request.user_id
 
         drvs = CampusDrive.query.filter_by(company_id=usrid)
         drives = []
@@ -323,7 +323,7 @@ def viewDrives():
 @login_required('company')
 def editDrives(drive_id):
     try:
-        usrid = session["user_id"]
+        usrid = request.user_id
         if request.method == "PUT":
             data = request.get_json()
             
@@ -383,7 +383,7 @@ def editDrives(drive_id):
 @login_required('company')
 def openDrive(drive_id):
     try:
-        usrid = session["user_id"]
+        usrid = request.user_id
         drv = CampusDrive.query.filter_by(company_id=usrid,id=drive_id).first()
         if not drv:
             return jsonify({"success":False,"message":"No such drive exist."})
@@ -399,7 +399,6 @@ def openDrive(drive_id):
     
 
 @company_bp.route('/student-resume/<int:student_id>/<int:drive_id>',methods=["GET"])
-@login_required('company')
 def student_resume(student_id,drive_id):
     try:
         app = Application.query.filter_by(student_id=student_id,drive_id=drive_id).first()
@@ -702,7 +701,7 @@ def build_report_file(company_name, stats):
 @login_required('company')
 def export_report():
     try:
-        company_id = session["user_id"]
+        company_id = request.user_id
         comp = Company.query.filter_by(id=company_id).first()
         if not comp:
             return jsonify({"success": False, "message": "Unauthorized"}), 401
@@ -722,7 +721,6 @@ def export_report():
         return jsonify({"success": False, "message": str(e)}), 500
 
 @company_bp.route('/download-report/<filename>', methods=["GET"])
-@login_required('company')
 def download_report(filename):
     import os
     print(os.listdir(current_app.config['REPORTS_FOLDER']))

@@ -2,20 +2,13 @@ from flask import Flask , Blueprint, render_template, request, redirect, flash ,
 from flask_sqlalchemy import SQLAlchemy
 from models import *
 from flask import jsonify
-from utils import login_required
+from auth import login_required , create_token
 
 admin_bp = Blueprint('admin', __name__)
 
 
 @admin_bp.route('/login',methods=["POST"])
 def admin_login():
-    if session.get('role') == 'admin':
-        
-        return jsonify({
-            "success": True,
-            "message": "Already logged in"
-        }), 200
-   
     try:
         
         data = request.get_json() 
@@ -28,11 +21,12 @@ def admin_login():
         passw = data["password"]
         admn = Admin.query.filter_by(username=username).first()
         if admn and admn.check_password(passw):
-            session['role'] = 'admin'
-            session['user_id'] = admn.id
+            token = create_token(admn.id,"admin")
             return jsonify({
                 "success":True,
-                "message":"User Logged In"
+                "message":"User Logged In",
+                "token":token,
+                "user_nam":"admin"
             }),200
         
         return jsonify({
@@ -51,7 +45,7 @@ def admin_login():
 @login_required('admin')  
 def dashboard():
     try:
-        print("aaya")
+        
         stds = Student.query.count()
         drives = CampusDrive.query.filter(
             CampusDrive.deadline > datetime.now(),

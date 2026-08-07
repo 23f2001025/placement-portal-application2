@@ -7,7 +7,7 @@ import os
 
 from flask import send_from_directory, current_app, abort
 
-from utils import login_required
+from auth import login_required , create_token
 
 student_bp = Blueprint('student', __name__)
 
@@ -77,8 +77,6 @@ def student_register():
 
 @student_bp.route('/login',methods=["POST","GET"])
 def student_login():
-    if session.get('role') == 'student':
-        return jsonify({"success":True,"message":"already logged in"}),200
     try:
         if request.method == "POST":
             data = request.get_json()
@@ -89,10 +87,9 @@ def student_login():
             usr = Student.query.filter_by(enroll_no=enroll_no).first()
             if not usr or not usr.check_password(passw):
                 return jsonify({"success":False,"message":"Invalid credentials"}),200
-            session['user_id'] = usr.id
-            session['role']    = 'student'
-            session['name']    = usr.name
-            return jsonify({"success":True,"message":"login successfull"}),200
+            token = create_token(usr.id,"student")
+            nam = usr.name 
+            return jsonify({"success":True,"message":"login successfull","token":token,"user_name":nam}),200
         return jsonify({"success":False,"message":"GET method not supported for this API"}),200
     except Exception as e:
         return jsonify({"success":False,"message":f"{e}"}),500
@@ -101,10 +98,10 @@ def student_login():
 @login_required('student')
 def dashboard():
     try:
-        stid = session["user_id"]
+        stid = request.user_id
         st = Student.query.filter_by(id=stid).first()
         if not st:
-            return jsonify({"success":False,"message":"Unauthorized Access"}),200
+            return jsonify({"success":False,"message":"Unauthorized Access"}),401
         applications = Application.query.filter_by(student_id=stid).all()
         camp_drives = CampusDrive.query.filter(
             CampusDrive.deadline > datetime.now(),
@@ -148,10 +145,10 @@ def dashboard():
 @student_bp.route('/view-applications',methods=["GET"])
 @login_required('student')
 def application():
-    usr_id = session["user_id"]
+    usr_id = request.user_id
     st = Student.query.filter_by(id=usr_id).first()
     if not st:
-        return jsonify({"success":False,"message":"Unauthorizedd Access"}),200
+        return jsonify({"success":False,"message":"Unauthorizedd Access"}),401
     apps = Application.query.filter_by(student_id=st.id).all()
     applis = []
     inters = []
@@ -183,10 +180,10 @@ def application():
 @student_bp.route('/apply',methods=["POST","GET"])
 @login_required('student')
 def apply():
-    usrid = session["user_id"]
+    usrid = request.user_id
     st = Student.query.filter_by(id=usrid).first()
     if not st:
-        return jsonify({"success":False,"message":"Unauthorized Access,"}),200
+        return jsonify({"success":False,"message":"Unauthorized Access,"}),401
     if request.method == "POST":
         data = request.form 
         file = request.files.get('resume')
@@ -246,10 +243,10 @@ def apply():
 @student_bp.route('/profile',methods=["GET","POST"])
 @login_required('student')
 def profile():
-    usrid = session["user_id"]
+    usrid = request.user_id
     st = Student.query.filter_by(id=usrid).first()
     if not st:
-        return jsonify({"success":False,"message":"Unauthorized Access"}),200
+        return jsonify({"success":False,"message":"Unauthorized Access"}),401
     if request.method == "POST":
         data = request.get_json()
         mail = data.get("email")
@@ -276,7 +273,10 @@ def profile():
 def get_resume(drive_id):
 
    
-    student_id = session["user_id"] 
+    student_id = request.user_id 
+    std = Student.query.filter_by(id=student_id).first()
+    if not std:
+        return jsonify({"success":False,"message":"Unathourized access"}),401
 
     application = Application.query.filter_by(
         drive_id=drive_id,
