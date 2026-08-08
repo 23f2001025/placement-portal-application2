@@ -258,7 +258,8 @@ def student_applications():
                 "status":a.status,
                 "cgpa":st.cgpa,
                 "drive_id":d.id ,
-                "resume":a.resume if a.resume is not None else None 
+                "resume":a.resume if a.resume is not None else None ,
+                
             })
         for a in apps_shortlisted:
             st = Student.query.filter_by(id=a.student_id).first()
@@ -398,10 +399,15 @@ def openDrive(drive_id):
         return jsonify({"success":False,"message":f"something went wrong {e}"}),500
     
 
-@company_bp.route('/student-resume/<int:student_id>/<int:drive_id>',methods=["GET"])
-def student_resume(student_id,drive_id):
+@company_bp.route('/student-resume/<int:app>',methods=["GET"])
+@login_required('company')
+def student_resume(appid):
     try:
-        app = Application.query.filter_by(student_id=student_id,drive_id=drive_id).first()
+        usrid = request.user_id
+        app = Application.query.filter_by(id=appid).first()
+        if not app:
+            return jsonify({"success":False,"message":"No application found"})
+        
         if not app:
             return jsonify({"success":False,"message":"No drive or studnt found"})
         
@@ -721,6 +727,7 @@ def export_report():
         return jsonify({"success": False, "message": str(e)}), 500
 
 @company_bp.route('/download-report/<filename>', methods=["GET"])
+@login_required('company')
 def download_report(filename):
     import os
     print(os.listdir(current_app.config['REPORTS_FOLDER']))
@@ -729,3 +736,58 @@ def download_report(filename):
         filename,
         as_attachment=True
     )
+
+from werkzeug.utils import secure_filename
+
+@company_bp.route('/applications/<int:app_id>/upload-offer', methods=["POST"])
+@login_required('company')
+def upload_offer_letter(app_id):
+    try:
+        company_id = request.user_id
+        application = Application.query.filter_by(id=app_id).first()
+        if not application:
+            return jsonify({"success": False, "message": "Application not found"}), 404
+
+        
+        drive = CampusDrive.query.filter_by(id=application.drive_id, company_id=company_id).first()
+        if not drive:
+            return jsonify({"success": False, "message": "Unauthorized"}), 403
+
+        if application.status != "selected":
+            return jsonify({"success": False, "message": "Student is not selected"}), 400
+
+        if 'offer_letter' not in request.files:
+            return jsonify({"success": False, "message": "No file uploaded"}), 400
+
+        file = request.files['offer_letter']
+        if file.filename == '':
+            return jsonify({"success": False, "message": "No file selected"}), 400
+
+        if not file.filename.lower().endswith('.pdf'):
+            return jsonify({"success": False, "message": "Only PDF files are allowed"}), 400
+
+        filename = secure_filename(f"offer_{application.student_id}_{application.drive_id}_{file.filename}")
+        file.save(os.path.join(current_app.config['UPLOAD_FOLDER'], filename))
+
+        application.offer_letter = filename
+        db.session.commit()
+
+        return jsonify({"success": True, "message": "Offer letter uploaded successfully"}), 200
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "message": str(e)}), 500
+
+@company_bp.route('/offer-letter/<int:app_id>', methods=["GET"])
+@login_required('company')
+def view_offer_letter_company(app_id):
+    company_id = request.user_id
+    application = Application.query.filter_by(id=app_id).first()
+    if not application or not application.offer_letter:
+        return jsonify({"success": False, "message": "Not found"}), 404
+
+    drive = CampusDrive.query.filter_by(id=application.drive_id, company_id=company_id).first()
+    if not drive:
+        return jsonify({"success": False, "message": "Unauthorized"}), 403
+
+    return send_from_directory(current_app.config['UPLOAD_FOLDER'], application.offer_letter)

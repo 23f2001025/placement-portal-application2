@@ -166,12 +166,14 @@ def application():
 
         applis.append({
             "resume":a.resume,
+            "id":a.id,
             "drive_id":a.drive_id,
             "drive_title":d.job_title,
             "status":a.status,
-            "package":d.package_lpa
+            "package":d.package_lpa,
+            "offer_letter": a.offer_letter if a.offer_letter else None
         })
-    print(inters)
+   
     
     
     user_name=st.name
@@ -248,7 +250,7 @@ def profile():
     if not st:
         return jsonify({"success":False,"message":"Unauthorized Access"}),401
     if request.method == "POST":
-        data = request.get_json()
+        data = request.form 
         mail = data.get("email")
         if not mail:
             return jsonify({"success":False,"message":"Please enter a valid email address"}),200
@@ -291,3 +293,13 @@ def get_resume(drive_id):
         application.resume,
         as_attachment=False  
     )
+
+@student_bp.route('/offer-letter/<int:app_id>', methods=["GET"])
+@login_required('student')
+def view_offer_letter_student(app_id):
+    student_id = request.user_id
+    application = Application.query.filter_by(id=app_id, student_id=student_id).first()
+    if not application or not application.offer_letter:
+        return jsonify({"success": False, "message": "Not found"}), 404
+
+    return send_from_directory(current_app.config['UPLOAD_FOLDER'], application.offer_letter)

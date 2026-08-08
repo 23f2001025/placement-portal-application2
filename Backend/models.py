@@ -108,6 +108,7 @@ class Application(db.Model):
     resume          = db.Column(db.String(100),nullable=True)
     __table_args__  = (db.UniqueConstraint('student_id', 'drive_id',
                                            name='unique_application'),)
+    offer_letter    = db.Column(db.String(100), nullable=True)
     interview  = db.relationship('Interviews', backref='application', lazy=True)
 
     def __repr__(self):
