@@ -55,13 +55,14 @@
                         <th>Package (LPA)</th>
                         <th>Status</th>
                         <th>Resume</th>
+                        <th>Offer</th>
                     </tr>
                 </thead>
                 <tbody v-for="app in applications">
                     
                     <tr>
                         <td>
-                            <a href="'/drive-page/'+app.drive_id">
+                            <a :href="'drive.html?id=' + app.drive_id">
                                 {{ app.drive_title }}
                             </a>
                         </td>
@@ -79,60 +80,77 @@
                         </td>
                         <td>
                             
-                                <a v-if="app.resume" :href="`http://127.0.0.1:5000/student/resume/${app.drive_id}`" target="_blank">
-                                    View Resume
-                                </a>
+                                <button v-if="app.resume" class="btn btn-outline-success btn-sm" @click="viewResume(app.drive_id)">
+                                Resume
+                            </button>
                           
                                 <span class="text-muted" v-else>Not uploaded</span>
                             
+                        </td>
+                        <td>
+                            <button v-if="app.offer_letter" class="btn btn-outline-success btn-sm" @click="viewOfferLetter(app.id)">
+                                View Offer Letter
+                            </button>
+                            <span class="text-muted" v-else>Not yet issued</span>
                         </td>
                     </tr>
                     
                 </tbody>
             </table>
+            <h2>Interviews Scheduled</h2>
+
+            
+                <p v-if="message.length">{{ message }}</p>
+                        
+
+            
+            <table class="table table-bordered mt-3">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Drive</th>
+
+                        <th>Status</th>
+                        <th>Date</th>
+                        <th>Start Time</th>
+                    </tr>
+                </thead>
+                <tbody v-for="app in interviews">
+                    
+                    <tr>
+                        <td>
+                            <span  >{{app.drive_title}}</span>
+                        </td>
+                       
+                        <td>
+                            
+                                <span  >{{ app.status }}</span>
+                            
+                        </td>
+                        <td>
+                            
+                                <span  >{{ app.date }}</span>
+                            
+                        </td>
+                        <td>
+                            
+                                <span >{{ app.start }}</span>
+                            
+                        </td>
+                        
+                    </tr>
+                    
+                </tbody>
+            </table>
+            
+        </div>
+        <div class="col-md-10 p-4">
+            
         </div>
     </div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.js"></script>
-<script>
-const {createApp} = Vue;
-    createApp({
-        data(){
-            return {
-                student_name:"",
-                applications:[],
-                message:"",
+<script src="/scripts/student-application.js">
 
-            }
-        },
-        created(){
-            this.fetchData();
-        },
-        methods:{
-            async fetchData(){
-                try{
-                    
-                    
-                    
-                    const res = await fetch(`http://127.0.0.1:5000/student/view-applications`,{
-                        credentials:'include'
-                        
-                    });
-                   
-                    if(!res.ok) throw new Error("something went  wrong");
-                    const data = await res.json();
-                    if(!data.success) throw new Error(" Error  "+data.message);
-                    this.applications = data.applications
-                    this.student_name=data.student_name
-
-                }catch(err){
-                    this.message = err;
-                    console.log(err);
-
-                }
-            }
-        }
-    }).mount("#app");
 </script>
 </body>
 </html>

@@ -31,7 +31,7 @@
 <div class="login-card" id="app">
     <h3 class="text-center mb-4">Admin Login</h3>
 
-    <form method="POST" @submit.prevent="login">
+    <form  @submit.prevent="login">
         <div class="mb-3">
             <label class="form-label">username</label>
             <input type="text" class="form-control" v-model= "username"  required>
@@ -52,47 +52,8 @@
     </form>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.js"></script>
-<script>
-    const {createApp} = Vue;
-    createApp({
-        data(){
-            return {
-                username:"",
-                password:"",
-                message:"",
-            }
-        },
-        methods:{
-            async login(){
-                try{
-                    const data = await fetch(`http://127.0.0.1:5000/admin/login`,{
-                        method:'POST',
-                        headers:{
-                            'Content-Type':'Application/json',
-                        },
-                        credentials: 'include',
-                        body: JSON.stringify({
-                            "username":this.username,
-                            "password":this.password,
-                        })
-                    });
-                    console.log(data);
-                    if(!data.ok) throw new Error('Failed to create drive');
-                    const res = data.json();
-                    if(!res.success){
-                        this.message="Invalid credentials"
-                        return;
-                    }
-                    this.message = "Login Successfull , Redirecting to dashboard!"
-                    window.location.href = 'admindash.html';
-                }catch(err){
-                    console.log(err);
-                    this.message = err;
-                }
-                
-            } 
-        }
-    }).mount("#app")
+<script src="/scripts/adminlogin.js">
+    
 </script>
 </body>
 </html>

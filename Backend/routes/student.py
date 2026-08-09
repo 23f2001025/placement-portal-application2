@@ -155,7 +155,8 @@ def application():
     for a in apps:
         d = CampusDrive.query.filter_by(id=a.drive_id).first()
         interviews = Interviews.query.filter_by(application_id=a.id)
-        if interviews:
+        
+        if interviews and a.status != "selected":
             for i in interviews:
                 inters.append({
                     "drive_title":d.job_title,

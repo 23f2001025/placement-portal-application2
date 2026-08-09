@@ -20,10 +20,10 @@ def create_app():
     app.config['MAIL_SERVER'] = 'smtp.gmail.com'
     app.config['MAIL_PORT'] = 587
     app.config['MAIL_USE_TLS'] = True
-    app.config['MAIL_USERNAME'] = os.environ.get('HOST_EMAIL')
+    app.config['MAIL_USERNAME'] = 'alokmanawat6@gmail.com'
     app.config['MAIL_PASSWORD'] = os.environ.get('EMAIL_HOST_PASSWORD')   
-    app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('HOST_EMAIL')
-
+    app.config['MAIL_DEFAULT_SENDER'] = 'alokmanawat6@gmail.com'
+    app.config['ADMIN_REPORT_EMAIL'] = os.environ.get('ADMIN_REPORT_EMAIL', 'alokmanawat6@gmail.com')
     
     app.config['SESSION_COOKIE_SAMESITE'] = 'None'
     app.config['SESSION_COOKIE_SECURE'] = True   
@@ -65,11 +65,13 @@ def create_app():
     return app
 
 def _seed_admin(app):
-    admin_name = os.environ.get('ADMIN_NAME')
-    password = os.environ.get('ADMIN_PASSWORD')
+   
     with app.app_context():
-        if not Admin.query.filter_by(username=admin_name).first():
-            a = Admin(username=admin_name)
+        username = os.environ.get("ADMIN_NAME","admin")
+        password = os.environ.get("ADMIN_PASSWORD","admin123")
+        if not Admin.query.filter_by(username=username).first():
+
+            a = Admin(username=username)
             a.set_password(password)   
             db.session.add(a)
             db.session.commit()

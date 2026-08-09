@@ -33,7 +33,7 @@
             <a href="company-dash.html">Dashboard</a>
             <a href="create-drive.html">Create Drive</a>
             <a href="company-studentapplication.html">Applications</a>
-            <a href="edit-drive.html">Drives</a>
+            <a href="edit-drive2.html">Drives</a>
             <a href="company-profile.html">Profile</a>
             
         </div>
@@ -81,44 +81,8 @@
     </div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.js"></script>
-<script>
-    const {createApp} = Vue;
-    createApp({
-        data(){
-            return {
-                student_applications:[],
-                drives:[],
-                user_name:"",
-                message:"",
-            }
-        },
-        created(){
-            this.fetchCompanyData();
-        },
-        methods:{
-            async fetchCompanyData(){
-                try{
-
-                    console.log("hello")
-                    const res = await fetch(`http://127.0.0.1:5000/company/dashboard`,{
-                        credentials:'include'
-                    });
-                    console.log(res)
-                    if(!res.ok) throw new Exception("something went wrong ");
-                    const data = await res.json();
-                    console.log(data)
-                    if(!data.success) throw new Exception(data.message);
-                    this.student_applications = data.student_applications;
-                    this.drives = data.drives;
-                    this.user_name = data.user_name;
-                    return;
-                }catch(err){
-                    this.message =err;
-                    console.log(err);
-                }
-            }
-        }
-    }).mount("#app");
+<script src="/scripts/company-dash.js">
+    
 </script>
 </body>
 </html>

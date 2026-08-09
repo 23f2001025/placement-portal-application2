@@ -195,6 +195,7 @@ def profile():
         return jsonify({"success":False,"message":"Unauthorized Access"}),200
     if request.method == "POST":
         data = request.form 
+        print(data)
         if "description" in data:
             des = data["description"]
             comp.description = des 
@@ -230,6 +231,7 @@ def student_applications():
             db.session.delete(app)
         elif action == "select":
             app.status = "selected"
+            
         elif action == "reject":
             app.status = "rejected"
         db.session.commit()
@@ -399,7 +401,7 @@ def openDrive(drive_id):
         return jsonify({"success":False,"message":f"something went wrong {e}"}),500
     
 
-@company_bp.route('/student-resume/<int:app>',methods=["GET"])
+@company_bp.route('/student-resume/<int:appid>',methods=["GET"])
 @login_required('company')
 def student_resume(appid):
     try:
